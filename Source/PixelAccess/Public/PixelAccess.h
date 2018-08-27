@@ -5,6 +5,12 @@
 #include "CoreMinimal.h"
 #include "ModuleManager.h"
 
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <exception>
+#include <cmath>
+
 // https://answers.unrealengine.com/questions/25594/accessing-pixel-values-of-texture2d.html#answer-73443
 
 class FPixelAccessModule : public IModuleInterface
