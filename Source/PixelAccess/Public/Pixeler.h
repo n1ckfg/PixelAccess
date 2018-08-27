@@ -4,7 +4,6 @@
 #pragma once
 
 #include "PixelAccess.h"
-#include "GameFramework/Actor.h"
 
 #include "Pixeler.generated.h"
 
@@ -20,6 +19,10 @@ public:
 	void BeginPlay();
 	void ReadPoints();
 	void WritePointData();
+
+	USceneCaptureComponent2D *Camera;
+	UTextureRenderTarget2D *RenderTarget;
+	UTexture2D *Texture2D;
 
 	bool debugging = false;
 	bool drawRays = true;
