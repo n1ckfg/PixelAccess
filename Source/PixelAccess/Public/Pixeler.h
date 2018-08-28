@@ -14,11 +14,12 @@ class PIXELACCESS_API APixeler : public AActor
 
 public:
 
-	APixeler(const FObjectInitializer &ObjectInitializer);
+	APixeler();
 
-	void BeginPlay();
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+
 	void ReadPoints();
-	void WritePointData();
 
 	USceneCaptureComponent2D *Camera;
 	UTextureRenderTarget2D *RenderTarget;
@@ -31,9 +32,5 @@ public:
 	int pointsCounter = 0;
 	std::ofstream pointsFile;
 	TArray<FVector> points; 
-
-protected:
-
-	virtual void Tick(float DeltaTime) override;
 
 };
