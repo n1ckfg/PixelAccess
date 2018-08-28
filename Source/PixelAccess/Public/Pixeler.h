@@ -30,6 +30,7 @@ public:
 	int pointsMax = 200000;
 	int pointsCounter = 0;
 	std::ofstream pointsFile;
+	TArray<FVector> points; 
 
 protected:
 

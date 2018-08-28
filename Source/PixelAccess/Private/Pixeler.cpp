@@ -8,9 +8,7 @@ APixeler::APixeler(const FObjectInitializer& ObjectInitializer) : Super(ObjectIn
 
 	RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Root"));
 	Camera = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("Camera"));
-	ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> RenderTargetAsset(TEXT("/Game/MyLittleRenderTarget"));
-	//here you need to have prepared MyLittleRenderTarget asset, type RenderTarget2D. You can have one for many actors, it is duplicated. What is not resolved by me: i don't know if it is stable solution or it will make crash after many calls
-
+	ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> RenderTargetAsset(TEXT("/PixelAccess/Textures/TestRenderTarget"));
 	RenderTarget = DuplicateObject(RenderTargetAsset.Object, NULL);
 	RenderTarget->InitAutoFormat(1024, 1024);
 	Camera->TextureTarget = RenderTarget;
@@ -35,34 +33,35 @@ void APixeler::BeginPlay()
 	FTexturePlatformData *Data = Texture2D->PlatformData;
 	EPixelFormat Format = Data->PixelFormat;
 	GLog->Logf(TEXT("Pixel format: %d"), (uint8)(Format));
-	//format of pixel is PFloatRGBA
+	// pixel format is PFloatRGBA
 
 	int size = Data->Mips[0].BulkData.GetElementSize();
 	int N = Data->Mips[0].BulkData.GetElementCount();
 	GLog->Logf(TEXT("Number of elements: %d, size of one element: %d"), N, size);
-	//i've got 1 byte size of element
 
 	const void *Table = Data->Mips[0].BulkData.LockReadOnly();
 	Data->Mips[0].BulkData.Unlock();
 
 	const uint16 *Tab2 = StaticCast<const uint16*>(Table);
-	//ok, quick calculation. I get 8*1024*1024 bytes from 1024*1024 pixels, so one pixel got 8 bytes of data. Format is RGBA, so you can figure it yourself :)
+	// 1 pixel = 8 bytes of half-precision RGBA data; 1024 * 1024 pixels = 8 * 1024 * 1024 bytes
 	for (int i = 0; i<xx; i++)
 	{
 		for (int j = 0; j < yy; j++) 
 		{
-			int k = 4 * (i*yy + j);
+			int k = 4 * (i * yy + j);
 			int R = Tab2[k];
 			int G = Tab2[k + 1];
 			int B = Tab2[k + 2];
 			int A = Tab2[k + 3];
+
+			points.Add(FVector(R, G, B));
 		}
 	}
 
 	if (writeTestFile)
 	{
-		//std::string url = std::string(TCHAR_TO_UTF8(*FPaths::ProjectDir())) + "/points.asc";
-		//pointsFile.open(url);
+		std::string url = std::string(TCHAR_TO_UTF8(*FPaths::ProjectDir())) + "/points.asc";
+		pointsFile.open(url);
 	}
 }
 
@@ -75,14 +74,11 @@ void APixeler::Tick(const float DeltaTime)
 
 	if (writeTestFile)
 	{
-		/*
-		for (int i = 0; i<LidarMeasurement.Points.Num(); i += 3)
+		for (int i = 0; i<points.Num(); i++)
 		{
-			float x = LidarMeasurement.Points[i];
-			float y = LidarMeasurement.Points[i + 1];
-			float z = LidarMeasurement.Points[i + 2];
+			FVector p = points[i];
 
-			pointsFile << x << ", " << y << ", " << z << "\n";
+			pointsFile << p.X << ", " << p.Y << ", " << p.Z << "\n";
 			pointsCounter++;
 			if (pointsCounter > pointsMax) {
 				pointsFile.close();
@@ -91,7 +87,6 @@ void APixeler::Tick(const float DeltaTime)
 				break;
 			}
 		}
-		*/
 	}
 
 	if (debugging)
