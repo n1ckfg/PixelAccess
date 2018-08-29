@@ -1,7 +1,4 @@
 #pragma once
-// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
 
 #include "PixelAccess.h"
 
@@ -19,18 +16,17 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
-	void ReadPoints();
+	TArray<FVector> ReadPixels(UTextureRenderTarget2D *rtex);
 
 	USceneCaptureComponent2D *Camera;
 	UTextureRenderTarget2D *RenderTarget;
-	UTexture2D *Texture2D;
 
-	bool debugging = false;
-	bool drawRays = true;
+	UPROPERTY(EditAnywhere)
+	int resolution = 256;
+
 	bool writeTestFile = true;
 	int pointsMax = 200000;
 	int pointsCounter = 0;
 	std::ofstream pointsFile;
-	TArray<FVector> points; 
 
 };
