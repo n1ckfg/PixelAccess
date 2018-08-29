@@ -33,9 +33,11 @@ public:
 	UPROPERTY(EditAnywhere)
 	bool floatColor = false;
 
+	UPROPERTY(EditAnywhere)
+	bool writeTestFile = false;
+
 private:
 
-	bool writeTestFile = false;
 	int pointsMax = 200000;
 	int pointsCounter = 0;
 	TArray<FString> output;

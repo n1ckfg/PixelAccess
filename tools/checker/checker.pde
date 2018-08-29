@@ -7,7 +7,7 @@ void setup() {
   size(1024, 1024, P2D);
   col = new ArrayList<Col>();
   
-  coords = loadStrings("points_8bpc.asc");
+  coords = loadStrings("points.asc");
   
   for (int i=0; i<coords.length; i++) {
     if (!coords[i].startsWith("0, 0, 0")) {
