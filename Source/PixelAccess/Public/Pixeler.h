@@ -15,18 +15,29 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+	
+	bool WriteFile(FString SaveDirectory, FString FileName, FString SaveText, bool AllowOverWriting = true);
+	
+	TArray<FColor> ReadPixels(UTextureRenderTarget2D *rtex);
+	TArray<FVector> ReadPixelFloats(UTextureRenderTarget2D *rtex);
 
-	TArray<FVector> ReadPixels(UTextureRenderTarget2D *rtex);
-
+	UPROPERTY(EditAnywhere)
 	USceneCaptureComponent2D *Camera;
+
+	UPROPERTY(EditAnywhere)
 	UTextureRenderTarget2D *RenderTarget;
 
 	UPROPERTY(EditAnywhere)
 	int resolution = 256;
 
-	bool writeTestFile = true;
+	UPROPERTY(EditAnywhere)
+	bool floatColor = false;
+
+private:
+
+	bool writeTestFile = false;
 	int pointsMax = 200000;
 	int pointsCounter = 0;
-	std::ofstream pointsFile;
+	TArray<FString> output;
 
 };

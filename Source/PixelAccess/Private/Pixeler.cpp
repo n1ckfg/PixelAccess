@@ -6,10 +6,19 @@ APixeler::APixeler()
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	RootComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Root"));
-	Camera = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("Camera"));
-	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> finder_RenderTarget(TEXT("/PixelAccess/Textures/TestRenderTarget"));
-	RenderTarget = DuplicateObject(finder_RenderTarget.Object, NULL);
-	RenderTarget->InitAutoFormat(resolution, resolution);
+	
+	if (Camera == nullptr) 
+	{
+		Camera = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("Camera"));
+	}
+	
+	if (RenderTarget == nullptr)
+	{
+		static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> finder_RenderTarget(TEXT("/PixelAccess/Textures/TestRenderTarget"));
+		RenderTarget = DuplicateObject(finder_RenderTarget.Object, NULL);
+		RenderTarget->InitAutoFormat(resolution, resolution);
+	}
+
 	Camera->TextureTarget = RenderTarget;
 }
 
@@ -18,12 +27,6 @@ void APixeler::BeginPlay()
 	Super::BeginPlay();
 	SetActorTickEnabled(true);
 	Camera->TextureTarget = RenderTarget;
-
-	if (writeTestFile)
-	{
-		std::string url = std::string(TCHAR_TO_UTF8(*FPaths::ProjectDir())) + "/points.asc";
-		pointsFile.open(url);
-	}
 }
 
 void APixeler::Tick(const float DeltaTime)
@@ -33,29 +36,72 @@ void APixeler::Tick(const float DeltaTime)
 
 	if (writeTestFile)
 	{
-		TArray<FVector> pixels = ReadPixels(RenderTarget);
+		bool doWrite = false;
 
-		for (int i = 0; i<pixels.Num(); i++)
+		if (floatColor)
 		{
-			FVector p = pixels[i];
+			TArray<FVector> pixelFloats = ReadPixelFloats(RenderTarget);
 
-			pointsFile << p.X << ", " << p.Y << ", " << p.Z << "\n";
-			pointsCounter++;
-			if (pointsCounter > pointsMax) {
-				pointsFile.close();
-				UE_LOG(LogTemp, Warning, TEXT("~*~*~*~*~*~*~*~*~*~*~*~*~"));
-				UE_LOG(LogTemp, Warning, TEXT("*~* TEST FILE WRITTEN *~*"));
-				UE_LOG(LogTemp, Warning, TEXT("~*~*~*~*~*~*~*~*~*~*~*~*~"));
-				writeTestFile = false;
-				break;
+			for (int i = 0; i<pixelFloats.Num(); i++)
+			{
+				FVector p = pixelFloats[i];
+
+				output.Add(FString() + FString::SanitizeFloat(p.X) + ", " + FString::SanitizeFloat(p.Y) + ", " + FString::SanitizeFloat(p.Z));
+				pointsCounter++;
+				if (pointsCounter > pointsMax) 
+				{
+					doWrite = true;
+					break;
+				}
 			}
+		}
+		else 
+		{
+			TArray<FColor> pixels = ReadPixels(RenderTarget);
+
+			for (int i = 0; i<pixels.Num(); i++)
+			{
+				FColor c = pixels[i];
+				FVector p = FVector(c.R, c.G, c.B) / 255.0;
+
+				output.Add(FString() + FString::SanitizeFloat(p.X) + ", " + FString::SanitizeFloat(p.Y) + ", " + FString::SanitizeFloat(p.Z));
+				pointsCounter++;
+				if (pointsCounter > pointsMax) 
+				{
+					doWrite = true;
+					break;
+				}
+			}
+		}
+
+		if (doWrite)
+		{
+			WriteFile(FPaths::ProjectDir(), "points.asc", FString::Join(output, TEXT("\n")), true);
+			
+			UE_LOG(LogTemp, Warning, TEXT("~*~*~*~*~*~*~*~*~*~*~*~*~"));
+			UE_LOG(LogTemp, Warning, TEXT("*~* TEST FILE WRITTEN *~*"));
+			UE_LOG(LogTemp, Warning, TEXT("~*~*~*~*~*~*~*~*~*~*~*~*~"));
+			
+			writeTestFile = false;
 		}
 	}
 }
 
-TArray<FVector> APixeler::ReadPixels(UTextureRenderTarget2D *rtex)
+// Faster method but you're limited to 8bpc RGBA
+TArray<FColor> APixeler::ReadPixels(UTextureRenderTarget2D *rtex)
 {
-	TArray<FVector> pixels;
+	TArray<FColor> pixels;
+
+     auto RenderTarget = rtex->GameThread_GetRenderTargetResource();
+     RenderTarget->ReadPixels(pixels);
+
+	return pixels;
+}
+
+// Slower method but you can specify channels and bpc
+TArray<FVector> APixeler::ReadPixelFloats(UTextureRenderTarget2D *rtex)
+{
+	TArray<FVector> pixelFloats;
 
 	UTexture2D *Texture2D = rtex->ConstructTexture2D(this, FString("Tex2D"), EObjectFlags::RF_NoFlags);
 
@@ -78,14 +124,50 @@ TArray<FVector> APixeler::ReadPixels(UTextureRenderTarget2D *rtex)
 	// 1 pixel = 8 bytes of half-precision RGBA data; 1024 * 1024 pixels = 8 * 1024 * 1024 bytes
 
 	for (int i = 0; i<N; i+=4) {
-		int R = Tab2[i];
-		int G = Tab2[i + 1];
-		int B = Tab2[i + 2];
-		//int A = Tab2[i + 3];
+		float R = Tab2[i];
+		float G = Tab2[i + 1];
+		float B = Tab2[i + 2];
+		//float A = Tab2[i + 3];
 
-		pixels.Add(FVector(R, G, B));
+		pixelFloats.Add(FVector(R, G, B) / 65535.0);
 	}
 
-	return pixels;
+	return pixelFloats;
 }
 
+bool APixeler::WriteFile(FString SaveDirectory, FString FileName, FString SaveText, bool AllowOverWriting)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	if (SaveDirectory.Len() > 0)
+	{
+		FPaths::NormalizeDirectoryName(SaveDirectory);
+		FPaths::NormalizeFilename(FileName);
+
+		if (!PlatformFile.DirectoryExists(*SaveDirectory))
+		{
+			PlatformFile.CreateDirectory(*SaveDirectory);
+			if (!PlatformFile.DirectoryExists(*SaveDirectory))
+			{
+				return false; // Failed to create the directory.
+			}
+		}
+
+		SaveDirectory += "/" + FileName;
+	}
+	else
+	{
+		SaveDirectory = FPaths::ProjectDir() + "/" + FileName;
+	}
+
+
+	if (!AllowOverWriting)
+	{
+		if (PlatformFile.FileExists(*SaveDirectory))
+		{
+			return false; // Won't overwrite the file.
+		}
+	}
+
+	return FFileHelper::SaveStringToFile(SaveText, *SaveDirectory);
+}

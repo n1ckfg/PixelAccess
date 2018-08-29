@@ -7,7 +7,7 @@ void setup() {
   size(1024, 1024, P2D);
   col = new ArrayList<Col>();
   
-  coords = loadStrings("points.asc");
+  coords = loadStrings("points_8bpc.asc");
   
   for (int i=0; i<coords.length; i++) {
     if (!coords[i].startsWith("0, 0, 0")) {
@@ -31,9 +31,6 @@ void setup() {
 }
 
 void draw() {
-  blendMode(NORMAL);
-  background(0);
-  blendMode(ADD);
   image(img, 0, 0, width, height);
 }
 
@@ -42,9 +39,9 @@ class Col {
   color c;
   
   Col(float x,  float y, float z) {
-    int r = int(255 * 4 * x);
-    int g = int(255 * 4 * y);
-    int b = int(255 * 4 * z);
+    int r = int(255 * x);
+    int g = int(255 * y);
+    int b = int(255 * z);
     c = color(r,g,b);
     println(r + ", " + g + ", " + b);
   }
